@@ -48,9 +48,9 @@ std::pair<int, std::string> OS::run_command_unix(const std::vector<std::string>&
 
 		std::string full_command;
 		for (const auto& arg : args) {
-			if (!full_command.empty()) full_command += " ";
-			full_command += arg;
-		}
+        if (!full_command.empty()) full_command += " ";
+        full_command += "'" + arg + "'";  // WRAP EACH ARG IN SINGLE QUOTES
+    }
 		const char* bash_args[] = {"/bin/bash", "-c", full_command.c_str(), nullptr};
 		execvp(bash_args[0], const_cast<char* const*>(bash_args));
 
@@ -169,6 +169,15 @@ std::pair<int, std::string> OS::run_command(std::string& arg)
         result = OS::run_command_windows(arg);
     #endif
     return result;
+}
+// Overload: run_command(vector<string>)
+std::pair<int, std::string> OS::run_command(const std::vector<std::string>& args)
+{
+    #if defined(OS_UNIX_LIKE)
+        return OS::run_command_unix(args);
+    #else
+        return OS::run_command_windows(args);  // You can stub this if needed
+    #endif
 }
 
 std::vector<std::string> split(std::string str, char delim)

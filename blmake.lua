@@ -5,13 +5,13 @@
 
 Build = {
     compiler = "g++",      -- e.g., "g++"
-    files = {"main.cpp", "os.cpp"},         -- e.g., {"main.cpp", "utils.cpp"}
+    files = {"main.cpp", "os.cpp", "utils.cpp"}, -- e.g., {"main.cpp", "utils.cpp"}
     lang_exts = {"-std=c++20"},     -- e.g., {"-std=c++20"}
-    include_dirs = {},  -- Directories for include files (optional)
-    linker_opts = {},   -- Paths to check for included dependencies
-    dependencies = {},  -- Libraries to link against, e.g. {"lib1", "lib2"}
+    include_dirs = {"/opt/homebrew/include", "/opt/homebrew/Cellar/libarchive/3.7.9/include"},  -- Directories for include files (optional)
+    linker_opts = {"/opt/homebrew/lib"},   -- Paths to check for included dependencies
+    dependencies = {"archive", "zstd"},  -- Libraries to link against, e.g. {"lib1", "lib2"}
     preproc_opts = {},  -- Preprocessor options (e.g., macros, include paths)
-    optimization = "",  -- Optimization level (e.g., "-O2", "-Os")
+    optimization = "-O0",  -- Optimization level (e.g., "-O2", "-Os")
     debugging = false,  -- A BOOLEAN value indicating whether to include debugging info ("-g")
     build_type = "",    -- e.g., "Debug" or "Release"
     output = "main",        -- e.g., "myprogram"

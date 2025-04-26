@@ -225,3 +225,5 @@ java.util.concurrent.TimeoutException
 2025.04.25 22:13:44 INFO  no build target found for /Users/benlandrette/ccode/serious-projects/myjvm/test/Main.scala. Using presentation compiler with project's scala-library version: 3.3.5[0m
 2025.04.25 22:13:45 INFO  no build target found for /Users/benlandrette/ccode/serious-projects/myjvm/test/Main.scala. Using presentation compiler with project's scala-library version: 3.3.5[0m
 2025.04.25 22:13:45 WARN  no build target for: /Users/benlandrette/ccode/serious-projects/myjvm/test/Main.scala[0m
+2025.04.25 22:38:37 INFO  Shutting down server[0m
+2025.04.25 22:38:37 INFO  shutting down Metals[0m
