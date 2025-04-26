@@ -5,7 +5,7 @@
 
 Build = {
     compiler = "g++",      -- e.g., "g++"
-    files = {"main.cpp"},         -- e.g., {"main.cpp", "utils.cpp"}
+    files = {"main.cpp", "os.cpp"},         -- e.g., {"main.cpp", "utils.cpp"}
     lang_exts = {"-std=c++20"},     -- e.g., {"-std=c++20"}
     include_dirs = {},  -- Directories for include files (optional)
     linker_opts = {},   -- Paths to check for included dependencies
@@ -17,7 +17,7 @@ Build = {
     output = "main",        -- e.g., "myprogram"
     src_dir = "src",       -- Source directory
     out_dir = "build",       -- Output directory
-    hooks = {post_build = "./scripts/run.sh"},         -- e.g., {pre_build = "scripts/pre_build.sh"} 
+    hooks = {},         -- e.g., {pre_build = "scripts/pre_build.sh"} 
 }
 
 -- Customize behavior below!
