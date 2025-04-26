@@ -56,6 +56,7 @@ class OS
 public:
     static std::string detect_os();
     static std::pair<int, std::string> run_command(std::string& args);
+    static std::pair<int, std::string> run_command(const std::vector<std::string>& args);
 private:
     static std::pair<int, std::string> run_command_unix(const std::vector<std::string>& args);
     static std::pair<int, std::string> run_command_windows(const std::string& command);
