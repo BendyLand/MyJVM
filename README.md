@@ -17,6 +17,17 @@ It bundles its own runtimes and compilers internally, making it easy to prototyp
 ## Usage
 
 ### Building
+
+Before compiling the project, you must generate the header file containing the JVM runtimes. 
+To do this, run:
+
+```bash
+./generate_lang_archive_header.sh
+```
+*Note: The resulting header is a VERY large file. It is not recommended to open it directly.*
+
+To compile the project, use:
+
 ```bash
 g++ -std=c++20 -O3 \
   -I/opt/homebrew/include \

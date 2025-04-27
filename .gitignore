@@ -1,4 +1,6 @@
 out/*
 .languages
 .scala-build
+build/*
+src/lang_archive.h
 
