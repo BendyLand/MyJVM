@@ -1,14 +1,14 @@
 #include <archive.h>
 #include <archive_entry.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <zstd.h> 
 #include "lang_archive.h"
-#include "utils.hpp"
 #include "os.hpp"
+#include "utils.hpp"
 
 using std::cout;
 using std::endl;
@@ -96,12 +96,10 @@ void compile_scala_files(const my::vector<std::string>& files)
         "-sourcepath", ".",
         "-d", "out/"
     };
-    for (const auto& file : files) {
-        class_cmd.push_back(file);
-    }
+    for (const auto& file : files) class_cmd.push_back(file); 
     std::pair<int, std::string> res = OS::run_command(class_cmd);
     if (res.first != 0) {
-        cout << "Compilation failed: " << res.second << endl;
+        std::cerr << "Compilation failed: " << res.second << endl;
         return;
     }
     std::vector<std::string> class_files = get_class_files();
@@ -121,7 +119,7 @@ void compile_kotlin_files(const my::vector<std::string>& files)
     std::string command = ".languages/kotlin-compiler/kotlinc/bin/kotlinc -include-runtime -d out/all_files.jar " + file_str;
     std::pair<int, std::string> res = OS::run_command(command);
     if (res.first != 0) {
-        cout << "Compilation failed: " << res.second << endl;
+        std::cerr << "Compilation failed: " << res.second << endl;
         return;
     }
     cout << "Files compiled successfully!" << endl;
@@ -245,14 +243,16 @@ void compile_files(const std::vector<std::string>& files, const std::string& fil
 std::vector<uint8_t> load_file(const std::string& filepath) 
 {
     std::ifstream file(filepath, std::ios::binary);
-    if (!file) throw std::runtime_error("Failed to open " + filepath);
+    if (!file) {
+        std::cerr << "Failed to open " << filepath << endl;
+        exit(1);
+    }
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
 bool create_jar_from_classes(const std::vector<std::string>& class_files) 
 {
     std::filesystem::path output_jar = "out/all_files.jar";
-
     struct archive* a = archive_write_new();
     archive_write_set_format_zip(a);
     if (archive_write_open_filename(a, output_jar.c_str()) != ARCHIVE_OK) {
@@ -260,34 +260,27 @@ bool create_jar_from_classes(const std::vector<std::string>& class_files)
         archive_write_free(a);
         return false;
     }
-
     for (const auto& filepath_str : class_files) {
         std::filesystem::path filepath(filepath_str);
         std::filesystem::path relative_path = std::filesystem::relative(filepath, "out");
-
         std::ifstream file(filepath, std::ios::binary);
         if (!file) {
-            std::cerr << "Failed to read file: " << filepath << std::endl;
+            std::cerr << "Failed to read file: " << filepath << endl;
             continue;
         }
-
         std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
         struct archive_entry* entry = archive_entry_new();
         archive_entry_set_pathname(entry, relative_path.string().c_str());
         archive_entry_set_size(entry, buffer.size());
         archive_entry_set_filetype(entry, AE_IFREG);
         archive_entry_set_perm(entry, 0644);
-
         archive_write_header(a, entry);
         archive_write_data(a, buffer.data(), buffer.size());
         archive_entry_free(entry);
     }
-
     archive_write_close(a);
     archive_write_free(a);
-
-    std::cout << "Successfully created " << output_jar << "!" << std::endl;
+    cout << "Successfully created " << output_jar << "!" << endl;
     return true;
 }
 
@@ -295,58 +288,47 @@ bool add_scala_runtime(const std::string& jar_path)
 {
     struct archive* a = archive_read_new();
     if (!a) {
-        std::cerr << "Failed to create archive object!" << std::endl;
+        std::cerr << "Failed to create archive object!" << endl;
         return false;
     }
-
     archive_read_support_format_zip(a);
-
     if (archive_read_open_filename(a, jar_path.c_str(), 10240) != ARCHIVE_OK) {
         std::cerr << "Failed to open JAR: " << jar_path << " Error: " << archive_error_string(a) << std::endl;
         archive_read_free(a);
         return false;
     }
-
     struct archive_entry* entry;
     while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
         const char* entry_name = archive_entry_pathname(entry);
         if (!entry_name) {
-            std::cerr << "Encountered file with no name, skipping..." << std::endl;
+            std::cerr << "Encountered file with no name, skipping..." << endl;
             archive_read_data_skip(a);
             continue;
         }
-
         // Skip directories
         if (archive_entry_filetype(entry) == AE_IFDIR) {
             archive_read_data_skip(a);
             continue;
         }
-
         std::filesystem::path output_path = std::filesystem::path("out") / entry_name;
         std::filesystem::create_directories(output_path.parent_path());
-
         std::ofstream out_file(output_path, std::ios::binary);
         if (!out_file) {
             std::cerr << "Failed to open output file for writing: " << output_path << std::endl;
             archive_read_data_skip(a);
             continue;
         }
-
         const void* buffer;
         size_t size;
         int64_t offset;
-
         while (archive_read_data_block(a, &buffer, &size, &offset) == ARCHIVE_OK) {
             out_file.write(reinterpret_cast<const char*>(buffer), size);
         }
-
         out_file.close();
     }
-
     archive_read_close(a);
     archive_read_free(a);
-
-    std::cout << "Successfully extracted " << jar_path << " into out/ directory." << std::endl;
+    cout << "Successfully extracted " << jar_path << " into out/ directory." << endl;
     return true;
 }
 
@@ -363,26 +345,28 @@ void write_embedded_archive_to_disk(const std::string& path)
 void decompress_zstd_file(const std::string& input_path, const std::string& output_path)
 {
     std::ifstream ifs(input_path, std::ios::binary);
-    if (!ifs) throw std::runtime_error("Failed to open input file for decompression.");
-
+    if (!ifs) {
+        std::cerr << "Failed to open input file for decompression." << endl;
+        exit(1);
+    }
     std::ofstream ofs(output_path, std::ios::binary);
-    if (!ofs) throw std::runtime_error("Failed to open output file for decompression.");
-
+    if (!ofs) {
+        std::cerr << "Failed to open output file for decompression." << endl;
+        exit(1);
+    }
     const size_t CHUNK_SIZE = 16384;
     std::vector<char> in_buf(CHUNK_SIZE);
     std::vector<char> out_buf(CHUNK_SIZE);
-
     ZSTD_DStream* dstream = ZSTD_createDStream();
-    if (!dstream) throw std::runtime_error("Failed to create ZSTD_DStream.");
-
+    if (!dstream) {
+        std::cerr << "Failed to create ZSTD_DStream." << endl;
+        exit(1);
+    }
     ZSTD_initDStream(dstream);
-
     while (ifs) {
         ifs.read(in_buf.data(), CHUNK_SIZE);
         size_t bytes_read = ifs.gcount();
-
         ZSTD_inBuffer input = { in_buf.data(), bytes_read, 0 };
-
         while (input.pos < input.size) {
             ZSTD_outBuffer output = { out_buf.data(), out_buf.size(), 0 };
             size_t ret = ZSTD_decompressStream(dstream, &output, &input);
@@ -392,7 +376,6 @@ void decompress_zstd_file(const std::string& input_path, const std::string& outp
             ofs.write(out_buf.data(), output.pos);
         }
     }
-
     ZSTD_freeDStream(dstream);
 }
 
@@ -401,36 +384,29 @@ void extract_tar(const std::string& tar_path, const std::string& output_dir)
     struct archive* a = archive_read_new();
     archive_read_support_format_tar(a);
     archive_read_support_filter_all(a); // In case it's compressed
-
     if (archive_read_open_filename(a, tar_path.c_str(), 10240) != ARCHIVE_OK) {
         throw std::runtime_error("Failed to open tar file: " + tar_path);
     }
-
     archive_entry* entry;
     while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
         std::filesystem::path full_path = std::filesystem::path(output_dir) / archive_entry_pathname(entry);
         auto type = archive_entry_filetype(entry);
-
         if (type == AE_IFDIR) {
             std::filesystem::create_directories(full_path);
-        } else if (type == AE_IFREG) {
+        } 
+        else if (type == AE_IFREG) {
             std::filesystem::create_directories(full_path.parent_path());
-
             std::ofstream out(full_path, std::ios::binary);
             if (!out) {
                 throw std::runtime_error("Failed to create output file: " + full_path.string());
             }
-
             const void* buff;
             size_t size;
             la_int64_t offset;
             while (archive_read_data_block(a, &buff, &size, &offset) == ARCHIVE_OK) {
                 out.write(reinterpret_cast<const char*>(buff), size);
             }
-        } else {
-            // Optional: handle symlinks or special files if you care
-            std::cout << "Skipping unsupported entry: " << full_path << std::endl;
-        }
+        } 
     }
 
     archive_read_free(a);
