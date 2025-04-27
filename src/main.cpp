@@ -22,9 +22,9 @@ int main(int argc, char** argv)
     std::string result;
     if (argc > 2) {
       std::string arg = std::string(argv[2]);
-      result = filetype == ".scala" ? run_known_scala_class_file(arg) : run_known_class_file(arg); 
+      result = run_known_class_file(arg, filetype); 
     }
-    else result = filetype == ".scala" ? try_run_scala_class_files(class_names) : try_run_class_files(class_names);
+    else result = try_run_class_files(class_names, filetype);
     cout << result << endl;
 
     return 0;

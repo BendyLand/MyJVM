@@ -93,6 +93,7 @@ void compile_scala_files(const my::vector<std::string>& files)
         "-Dscala.usejavacp=true",
         "-cp", scala_cp,
         "dotty.tools.dotc.Main",
+        "-sourcepath", ".",
         "-d", "out/"
     };
     for (const auto& file : files) {
@@ -117,7 +118,7 @@ void compile_kotlin_files(const my::vector<std::string>& files)
 {
     cout << "Compiling Kotlin files..." << endl;
     std::string file_str = files.join(" ");
-    std::string command = ".languages/kotlin-compiler/kotlinc/bin/kotlinc -include-runtime -d out/all.jar " + file_str;
+    std::string command = ".languages/kotlin-compiler/kotlinc/bin/kotlinc -include-runtime -d out/all_files.jar " + file_str;
     std::pair<int, std::string> res = OS::run_command(command);
     if (res.first != 0) {
         cout << "Compilation failed: " << res.second << endl;
@@ -142,25 +143,40 @@ void compile_java_files(const my::vector<std::string>& files)
     else cout << "Unable to archive files to a jar.";
 }
 
-std::string try_run_class_files(std::vector<std::string>& class_names)
+std::string run_known_class_file(std::string& name, const std::string& filetype)
 {
-    cout << "Attempting:" << endl;
-    for (std::string& name : class_names) {
-        if (my::string(name).contains("$") || name.starts_with("scala.")) continue;
-        std::string command = ".languages/jvm-runtime-standard/bin/java -cp out/all_files.jar " + name;
-        std::pair<int, std::string> res = OS::run_command(command);
-        if (res.first == 0) return res.second;
-    }    
-    return "No valid entrypoints detected.";
+    if (filetype == ".java") return run_known_java_class_file(name);
+    else if (filetype == ".kt") return run_kotlin_jar();
+    else if (filetype == ".scala") return run_known_scala_class_file(name);
+    else return "Unknown file type provided.";
 }
 
-std::string run_known_class_file(std::string& name)
+std::string try_run_class_files(std::vector<std::string>& class_names, const std::string& filetype)
+{
+    if (filetype == ".java") return try_run_java_class_files(class_names);
+    else if (filetype == ".kt") return run_kotlin_jar();
+    else if (filetype == ".scala") return try_run_scala_class_files(class_names);
+    else return "Unknown file type provided.";
+}
+
+std::string run_known_java_class_file(std::string& name)
 {
     cout << "Running: '" << name << "'" << endl;
     std::string command = ".languages/jvm-runtime-standard/bin/java -cp out/all_files.jar " + name;
     std::pair<int, std::string> res = OS::run_command(command);
     if (res.first == 0) return res.second;
     else return "Unable to run provided entrypoint.";
+}
+
+std::string try_run_java_class_files(std::vector<std::string>& class_names)
+{
+    cout << "Attempting:" << endl;
+    for (std::string& name : class_names) {
+        if (my::string(name).contains("$") || name.starts_with("scala.")) continue;
+        std::string result = run_known_java_class_file(name);
+        if (result != "Unable to run provided entrypoint.") return result; 
+    }    
+    return "No valid entrypoints detected.";
 }
 
 std::string run_known_scala_class_file(std::string& name)
@@ -201,6 +217,16 @@ std::string try_run_scala_class_files(std::vector<std::string>& class_names)
     return "No valid Scala entrypoints detected.";
 }
 
+std::string run_kotlin_jar()
+{
+    cout << "Running Kotlin project." << endl;;
+    std::string java_path = ".languages/jvm-runtime-standard/bin/java";
+    std::string command = java_path + " -jar out/all_files.jar";
+    std::pair<int, std::string> res = OS::run_command(command);
+    if (res.first == 0) return res.second;
+    else return "Unable to run Kotlin jar.";
+}
+
 bool already_compiled(const std::filesystem::path& root)
 {
     std::filesystem::path output = root / "out" / "all_files.jar";
@@ -223,66 +249,45 @@ std::vector<uint8_t> load_file(const std::string& filepath)
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
-
-bool create_jar_from_classes(const std::vector<std::string>& class_files)
+bool create_jar_from_classes(const std::vector<std::string>& class_files) 
 {
-    struct archive* a = archive_write_new();
-    if (!a) {
-        std::cerr << "Failed to create archive object!" << std::endl;
-        return false;
-    }
+    std::filesystem::path output_jar = "out/all_files.jar";
 
+    struct archive* a = archive_write_new();
     archive_write_set_format_zip(a);
-    if (archive_write_open_filename(a, "out/all_files.jar") != ARCHIVE_OK) {
-        std::cerr << "Failed to open output JAR file: " << archive_error_string(a) << std::endl;
+    if (archive_write_open_filename(a, output_jar.c_str()) != ARCHIVE_OK) {
+        std::cerr << "Failed to open archive: " << archive_error_string(a) << std::endl;
         archive_write_free(a);
         return false;
     }
 
-    for (const auto& filepath : class_files)
-    {
-        std::vector<uint8_t> file_data = load_file(filepath); // your existing function
-        std::string base_filename = filepath.substr(filepath.find_last_of("/\\") + 1);
+    for (const auto& filepath_str : class_files) {
+        std::filesystem::path filepath(filepath_str);
+        std::filesystem::path relative_path = std::filesystem::relative(filepath, "out");
+
+        std::ifstream file(filepath, std::ios::binary);
+        if (!file) {
+            std::cerr << "Failed to read file: " << filepath << std::endl;
+            continue;
+        }
+
+        std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
         struct archive_entry* entry = archive_entry_new();
-        if (!entry) {
-            std::cerr << "Failed to create archive entry!" << std::endl;
-            archive_write_free(a);
-            return false;
-        }
-
-        archive_entry_set_pathname(entry, base_filename.c_str());
-        archive_entry_set_size(entry, file_data.size());
+        archive_entry_set_pathname(entry, relative_path.string().c_str());
+        archive_entry_set_size(entry, buffer.size());
         archive_entry_set_filetype(entry, AE_IFREG);
-        archive_entry_set_perm(entry, 0644); // regular file permissions
+        archive_entry_set_perm(entry, 0644);
 
-        if (archive_write_header(a, entry) != ARCHIVE_OK) {
-            std::cerr << "Failed to write header for file: " << filepath << " Error: " << archive_error_string(a) << std::endl;
-            archive_entry_free(entry);
-            archive_write_free(a);
-            return false;
-        }
-
-        if (!file_data.empty()) {
-            if (archive_write_data(a, file_data.data(), file_data.size()) < 0) {
-                std::cerr << "Failed to write data for file: " << filepath << " Error: " << archive_error_string(a) << std::endl;
-                archive_entry_free(entry);
-                archive_write_free(a);
-                return false;
-            }
-        }
-
+        archive_write_header(a, entry);
+        archive_write_data(a, buffer.data(), buffer.size());
         archive_entry_free(entry);
     }
 
-    if (archive_write_close(a) != ARCHIVE_OK) {
-        std::cerr << "Failed to close archive: " << archive_error_string(a) << std::endl;
-        archive_write_free(a);
-        return false;
-    }
-
+    archive_write_close(a);
     archive_write_free(a);
-    std::cout << "Successfully created out/all_files.jar!" << std::endl;
+
+    std::cout << "Successfully created " << output_jar << "!" << std::endl;
     return true;
 }
 
@@ -448,6 +453,11 @@ void restore_languages_directory()
                              std::filesystem::perms::owner_exec |
                              std::filesystem::perms::group_exec |
                              std::filesystem::perms::others_exec,
+                             std::filesystem::perm_options::add);
+    std::filesystem::permissions(".languages/kotlin-compiler/kotlinc/bin/kotlinc", 
+                             std::filesystem::perms::owner_exec |
+                             std::filesystem::perms::group_exec |
+                             std::filesystem::perms::others_exec, 
                              std::filesystem::perm_options::add);
 }
 
