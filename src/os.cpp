@@ -170,6 +170,7 @@ std::pair<int, std::string> OS::run_command(std::string& arg)
     #endif
     return result;
 }
+
 // Overload: run_command(vector<string>)
 std::pair<int, std::string> OS::run_command(const std::vector<std::string>& args)
 {
