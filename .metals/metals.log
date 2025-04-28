@@ -321,3 +321,5 @@ java.util.concurrent.TimeoutException
 2025.04.26 22:01:22 WARN  Build server is not auto-connectable.[0m
 2025.04.26 22:01:22 WARN  no build target for: /Users/benlandrette/ccode/serious-projects/myjvm/test/MainProgram.scala[0m
 2025.04.26 22:01:22 INFO  no build target found for /Users/benlandrette/ccode/serious-projects/myjvm/test/MainProgram.scala. Using presentation compiler with project's scala-library version: 3.3.5[0m
+2025.04.27 11:14:00 INFO  Shutting down server[0m
+2025.04.27 11:14:00 INFO  shutting down Metals[0m
