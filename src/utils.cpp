@@ -1,4 +1,5 @@
 #include <archive.h>
+#include <algorithm>
 #include <archive_entry.h>
 #include <filesystem>
 #include <fstream>
@@ -435,5 +436,14 @@ void restore_languages_directory()
                              std::filesystem::perms::group_exec |
                              std::filesystem::perms::others_exec, 
                              std::filesystem::perm_options::add);
+}
+
+bool any_env_prefix_set(const std::string& target) 
+{
+    return std::any_of(target.begin(), target.end(), [&](auto){
+        static std::string prefix;
+        prefix += target[prefix.size()];
+        return std::getenv(prefix.c_str()) != nullptr;
+    });
 }
 

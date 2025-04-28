@@ -24,4 +24,5 @@ void write_embedded_archive_to_disk(const std::string& path);
 void decompress_zstd_file(const std::string& input_path, const std::string& output_path);
 void extract_tar(const std::string& tar_path, const std::string& dest_dir);
 void restore_languages_directory();
+bool any_env_prefix_set(const std::string& target);
 
