@@ -18,9 +18,8 @@ int main(int argc, char** argv)
         exit(1);
     }
     std::string filetype = infer_file_type(".");
-    const char* compile_env_var = std::getenv("RECOMPILE");
-    size_t recompile = compile_env_var ? 1 : 0;
-    if (!already_compiled(".") || recompile == 1) {
+    bool recompile = any_env_prefix_set("RECOMPILE");
+    if (!already_compiled(".") || recompile) {
         compile_files(files, filetype);
     }
     std::vector<std::string> class_names = get_class_names();
