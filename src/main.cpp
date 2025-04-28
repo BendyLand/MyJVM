@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "utils.hpp"
 
 using std::cout; 
@@ -17,7 +18,10 @@ int main(int argc, char** argv)
         exit(1);
     }
     std::string filetype = infer_file_type(".");
-    if (!already_compiled(".")) compile_files(files, filetype);
+    std::string compile_env_var = std::string(std::getenv("COMPILE"));
+    if (!already_compiled(".") || compile_env_var == std::string("1")) {
+        compile_files(files, filetype);
+    }
     std::vector<std::string> class_names = get_class_names();
     std::string result;
     if (argc > 2) {
