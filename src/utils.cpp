@@ -7,12 +7,16 @@
 #include <stdexcept>
 #include <string>
 #include <zstd.h> 
-#include "lang_archive.h"
 #include "os.hpp"
 #include "utils.hpp"
 
 using std::cout;
 using std::endl;
+
+extern const unsigned char _binary__languages_tar_zst_start[];
+extern const unsigned char _binary__languages_tar_zst_end[];
+
+
 
 std::string infer_file_type(const std::filesystem::path& root)
 {
@@ -340,7 +344,8 @@ void write_embedded_archive_to_disk(const std::string& path)
         std::cerr << "Unable to open file: " << path << endl;
         exit(1);
     }
-    ofs.write(reinterpret_cast<const char*>(_languages_tar_zst), _languages_tar_zst_len);
+    size_t archive_size = _binary__languages_tar_zst_end - _binary__languages_tar_zst_start;
+    ofs.write(reinterpret_cast<const char*>(_binary__languages_tar_zst_start), archive_size);
 }
 
 void decompress_zstd_file(const std::string& input_path, const std::string& output_path)
