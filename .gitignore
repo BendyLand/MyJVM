@@ -1,6 +1,9 @@
 out/*
 .scala-build
 build/*
-src/lang_archive.h
+src/lang_archive.o
 .languages/
+.languages.tar
+.languages.tar.zst
+.temp/
 

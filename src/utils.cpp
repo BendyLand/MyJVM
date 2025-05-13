@@ -16,8 +16,6 @@ using std::endl;
 extern const unsigned char _binary__languages_tar_zst_start[];
 extern const unsigned char _binary__languages_tar_zst_end[];
 
-
-
 std::string infer_file_type(const std::filesystem::path& root)
 {
     std::vector<std::string> files;
